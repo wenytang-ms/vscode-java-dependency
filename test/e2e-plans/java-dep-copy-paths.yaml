@@ -39,15 +39,9 @@
 #
 # Cross-OS path separator handling
 # ────────────────────────────────
-# Windows fsPaths use `\` and POSIX uses `/`. The assertions therefore
-# combine three orthogonal checks per command:
-#   - `contains: "App.java"`  — leaf filename, identical on every OS
-#   - `matches: regex`        — accepts both separators between segments
-#   - `notContains: <sentinel>` — proves the clipboard was overwritten
-#                                 (we seed a sentinel before each command)
-#
-# A pure `exact:` match would force a per-OS conditional plan; the regex
-# approach keeps a single plan that's portable Linux ↔ Windows ↔ macOS.
+# The assertions accept either `\` (Windows) or `/` (POSIX) between path
+# segments. The relative path assertion is anchored at both ends: it must be
+# the workspace-relative path and not an absolute-path suffix.
 #
 # Usage:
 #   npx autotest run test/e2e-plans/java-dep-copy-paths.yaml --vsix <path-to-vsix>
@@ -57,11 +51,11 @@ description: |
   Exercises java.view.package.copyFilePath and java.view.package.copyRelativeFilePath
   on a Maven-project source file. Seeds a clipboard sentinel before each command,
   invokes the command by id (using the current tree selection), and verifies the
-  resulting clipboard text via path-shape regex + filename containment +
-  sentinel-overwritten check.
+  absolute path via path-shape regex and the relative path via an anchored
+  workspace-relative clipboard check.
 
 setup:
-  extension: "redhat.java"
+  extension: "vscjava.vscode-java-pack"
   vscodeVersion: "stable"
   workspace: "../maven"
   timeout: 180
@@ -156,17 +150,9 @@ steps:
   # A fresh sentinel is still needed — the cycle-1 clipboard now contains
   # the absolute path, which would trivially satisfy any leaf-only check.
   #
-  # Cross-platform note: VS Code's built-in `copyRelativeFilePath` computes
-  # `path.relative(workspaceFolderUri, fileUri)` and falls back to the
-  # absolute fsPath when the file URI isn't a member of any workspace
-  # folder. On Windows the URI we pass — `Uri.parse(cmdNode.uri)` from
-  # JDT.LS — can differ from VS Code's registered workspace folder URI
-  # in drive-letter case or percent-encoding, so the membership test
-  # fails and we get the absolute path back. On POSIX the URIs match and
-  # the relative form is produced. The assertions below tolerate both:
-  # they prove the command fired and overwrote the sentinel with a
-  # well-formed path ending in the expected package + class layout, but
-  # do not require the leading-`src` shape that only POSIX produces.
+  # The decisive assertion below is anchored at both ends so a Windows absolute
+  # path fallback cannot pass by merely ending with the expected package +
+  # class layout.
   - id: "seed-clipboard-relative"
     action: "writeClipboard __SENTINEL_BEFORE_COPY_RELATIVE_FILE_PATH__"
 
@@ -176,12 +162,8 @@ steps:
 
   # Verify the clipboard after copyRelativeFilePath.
   #
-  # • `contains: "App.java"` — leaf filename appears (OS-independent)
-  # • `matches: ...` — same path-suffix shape as the absolute assertion
-  #     above. Anchored to `$` so it matches whether the path is the
-  #     POSIX relative form `src/main/java/.../App.java` (single match
-  #     of the suffix) or the Windows absolute fallback
-  #     `C:\...\maven\src\main\java\.../App.java` (suffix at end).
+  # • `matches: ...` — requires the complete workspace-relative path from the
+  #     issue, while accepting platform-specific separators.
   # • `notContains: <sentinel>` — proves the seed was overwritten,
   #     which is the strongest signal that the wrapper command actually
   #     forwarded to the built-in (rather than silently no-op'ing on a
@@ -189,7 +171,6 @@ steps:
   - id: "verify-relative-path"
     action: "wait 1 seconds"
     verifyClipboard:
-      contains: "App.java"
-      matches: "src[\\\\/]main[\\\\/]java[\\\\/]com[\\\\/]mycompany[\\\\/]app[\\\\/]App\\.java$"
+      matches: "^src[\\\\/]main[\\\\/]java[\\\\/]com[\\\\/]mycompany[\\\\/]app[\\\\/]App\\.java$"
       notContains: "__SENTINEL_BEFORE_COPY_RELATIVE_FILE_PATH__"
     timeout: 10
