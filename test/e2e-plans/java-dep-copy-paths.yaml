@@ -156,17 +156,9 @@ steps:
   # A fresh sentinel is still needed — the cycle-1 clipboard now contains
   # the absolute path, which would trivially satisfy any leaf-only check.
   #
-  # Cross-platform note: VS Code's built-in `copyRelativeFilePath` computes
-  # `path.relative(workspaceFolderUri, fileUri)` and falls back to the
-  # absolute fsPath when the file URI isn't a member of any workspace
-  # folder. On Windows the URI we pass — `Uri.parse(cmdNode.uri)` from
-  # JDT.LS — can differ from VS Code's registered workspace folder URI
-  # in drive-letter case or percent-encoding, so the membership test
-  # fails and we get the absolute path back. On POSIX the URIs match and
-  # the relative form is produced. The assertions below tolerate both:
-  # they prove the command fired and overwrote the sentinel with a
-  # well-formed path ending in the expected package + class layout, but
-  # do not require the leading-`src` shape that only POSIX produces.
+  # Cross-platform note: the Java Projects node URI can differ from VS Code's
+  # registered workspace folder URI in drive-letter case or percent-encoding.
+  # The wrapper must still write the same workspace-relative path on every OS.
   - id: "seed-clipboard-relative"
     action: "writeClipboard __SENTINEL_BEFORE_COPY_RELATIVE_FILE_PATH__"
 
@@ -176,20 +168,11 @@ steps:
 
   # Verify the clipboard after copyRelativeFilePath.
   #
-  # • `contains: "App.java"` — leaf filename appears (OS-independent)
-  # • `matches: ...` — same path-suffix shape as the absolute assertion
-  #     above. Anchored to `$` so it matches whether the path is the
-  #     POSIX relative form `src/main/java/.../App.java` (single match
-  #     of the suffix) or the Windows absolute fallback
-  #     `C:\...\maven\src\main\java\.../App.java` (suffix at end).
-  # • `notContains: <sentinel>` — proves the seed was overwritten,
-  #     which is the strongest signal that the wrapper command actually
-  #     forwarded to the built-in (rather than silently no-op'ing on a
-  #     missing selection).
+  # • `exact: ...` — proves Copy Relative Path never falls back to an
+  #     absolute fsPath when the Java Projects node URI is normalized
+  #     differently from the workspace folder URI.
   - id: "verify-relative-path"
     action: "wait 1 seconds"
     verifyClipboard:
-      contains: "App.java"
-      matches: "src[\\\\/]main[\\\\/]java[\\\\/]com[\\\\/]mycompany[\\\\/]app[\\\\/]App\\.java$"
-      notContains: "__SENTINEL_BEFORE_COPY_RELATIVE_FILE_PATH__"
+      exact: "src/main/java/com/mycompany/app/App.java"
     timeout: 10
