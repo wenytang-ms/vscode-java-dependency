@@ -177,19 +177,17 @@ steps:
   # Verify the clipboard after copyRelativeFilePath.
   #
   # • `contains: "App.java"` — leaf filename appears (OS-independent)
-  # • `matches: ...` — same path-suffix shape as the absolute assertion
-  #     above. Anchored to `$` so it matches whether the path is the
-  #     POSIX relative form `src/main/java/.../App.java` (single match
-  #     of the suffix) or the Windows absolute fallback
-  #     `C:\...\maven\src\main\java\.../App.java` (suffix at end).
-  # • `notContains: <sentinel>` — proves the seed was overwritten,
-  #     which is the strongest signal that the wrapper command actually
-  #     forwarded to the built-in (rather than silently no-op'ing on a
-  #     missing selection).
+  # • `matches: ...` — anchored with `^` so the path must START with
+  #     `src/` (or `src\`). An absolute path such as `C:\...\App.java`
+  #     does NOT start with `src` and therefore fails. After the fix
+  #     (Uri.file(Uri.parse(cmdNode.uri).fsPath) normalises the drive-
+  #     letter case so VS Code's workspace-membership check succeeds on
+  #     Windows) both platforms produce the relative form.
+  # • `notContains: <sentinel>` — proves the seed was overwritten.
   - id: "verify-relative-path"
     action: "wait 1 seconds"
     verifyClipboard:
       contains: "App.java"
-      matches: "src[\\\\/]main[\\\\/]java[\\\\/]com[\\\\/]mycompany[\\\\/]app[\\\\/]App\\.java$"
+      matches: "^src[\\\\/]main[\\\\/]java[\\\\/]com[\\\\/]mycompany[\\\\/]app[\\\\/]App\\.java$"
       notContains: "__SENTINEL_BEFORE_COPY_RELATIVE_FILE_PATH__"
     timeout: 10

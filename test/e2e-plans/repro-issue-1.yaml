@@ -1,0 +1,111 @@
+# Regression test for issue #1:
+# "Copy Relative Path copies an absolute path on Windows"
+#
+# Root cause
+# ──────────
+# dependencyExplorer.ts forwards `Uri.parse(cmdNode.uri)` (a JDT.LS URI)
+# to VS Code's built-in `copyRelativeFilePath`. On Windows, the JDT.LS
+# URI can differ from the registered workspace-folder URI in drive-letter
+# case or percent-encoding, so VS Code's workspace-membership check fails
+# and the built-in falls back to the absolute fsPath.
+#
+# Fix
+# ───
+# Normalise the URI with `Uri.file(Uri.parse(cmdNode.uri).fsPath)` before
+# forwarding it. `fsPath` normalises drive-letter case on Windows, and
+# `Uri.file(...)` round-trips it back into a canonical file:// URI that
+# VS Code's workspace-folder registry can match.
+#
+# Decisive assertion
+# ──────────────────
+# The `verifyClipboard` on "verify-relative-path" uses `^` to anchor the
+# regex to the START of the clipboard text. A relative path produced by
+# the fixed code starts with `src/`; the Windows absolute-path fallback
+# starts with `C:\` (or similar), which fails the `^src` anchor.
+# This assertion therefore:
+#   • FAILS  on the un-fixed build (Windows returns the absolute path)
+#   • PASSES on the fixed build  (both Windows and Linux return the relative path)
+#
+# Usage:
+#   npx autotest run test/e2e-plans/repro-issue-1.yaml --vsix <path-to-vsix> --no-llm
+
+name: "Repro #1 — copyRelativeFilePath must return a workspace-relative path"
+description: |
+  Verifies that java.view.package.copyRelativeFilePath copies the
+  workspace-relative path (e.g. src/main/java/com/mycompany/app/App.java)
+  and NOT an absolute filesystem path (e.g. C:\…\App.java).
+  Assertion is anchored to the start of the clipboard text so it fails
+  when the Windows absolute-path fallback is produced.
+
+setup:
+  extension: "vscjava.vscode-java-pack"
+  vscodeVersion: "stable"
+  workspace: "../maven"
+  timeout: 180
+  settings:
+    java.configuration.checkProjectSettingsExclusions: false
+    workbench.startupEditor: "none"
+
+steps:
+  # ── Setup: wait for LS, free sidebar space, focus Java Projects ──
+  - id: "ls-ready"
+    action: "waitForLanguageServer"
+    timeout: 180
+
+  - id: "close-aux-bar"
+    action: "executeVSCodeCommand workbench.action.closeAuxiliaryBar"
+
+  - id: "collapse-outline"
+    action: "collapseSidebarSection OUTLINE"
+
+  - id: "collapse-timeline"
+    action: "collapseSidebarSection TIMELINE"
+
+  - id: "collapse-workspace-root"
+    action: "collapseWorkspaceRoot"
+
+  - id: "focus-java-projects"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+
+  - id: "wait-tree-load"
+    action: "wait 3 seconds"
+
+  # ── Open App.java so link-with-editor reveals and selects it in the tree ──
+  - id: "open-target-file"
+    action: "open file App.java"
+    waitBefore: 2
+
+  - id: "collapse-workspace-root-2"
+    action: "collapseWorkspaceRoot"
+
+  - id: "focus-java-projects-2"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    waitBefore: 2
+
+  # Click the exact "App" leaf row to assert it as the active selection.
+  # Using `exact` so "my-app" (project node) is not matched first.
+  - id: "select-app"
+    action: "click App tree item exact"
+    waitBefore: 1
+
+  # ── Seed clipboard sentinel, then invoke copyRelativeFilePath ──
+  - id: "seed-clipboard"
+    action: "writeClipboard __SENTINEL_BEFORE_COPY_RELATIVE_FILE_PATH__"
+
+  - id: "invoke-copy-relative-file-path"
+    action: "executeVSCodeCommand java.view.package.copyRelativeFilePath"
+    waitBefore: 1
+
+  # ── Decisive assertion ──
+  # The regex is anchored with `^` so it only matches a path that STARTS
+  # with `src/` (or `src\` on Windows). An absolute path such as
+  # `C:\Users\...\maven\src\...\App.java` does NOT start with `src` and
+  # therefore FAILS this check on un-fixed builds.
+  - id: "verify-relative-path"
+    action: "wait 1 seconds"
+    verify: "Clipboard should contain the workspace-relative path starting with src/, not an absolute path"
+    verifyClipboard:
+      contains: "App.java"
+      matches: "^src[\\\\/]main[\\\\/]java[\\\\/]com[\\\\/]mycompany[\\\\/]app[\\\\/]App\\.java$"
+      notContains: "__SENTINEL_BEFORE_COPY_RELATIVE_FILE_PATH__"
+    timeout: 10
