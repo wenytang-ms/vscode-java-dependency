@@ -165,7 +165,14 @@ export class DependencyExplorer implements Disposable {
             instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_COPY_RELATIVE_FILE_PATH, (node?: DataNode) => {
                 const cmdNode = getCmdNode(this._dependencyViewer.selection, node);
                 if (cmdNode?.uri) {
-                    commands.executeCommand("copyRelativeFilePath", Uri.parse(cmdNode.uri));
+                    // Use Uri.file(…fsPath) instead of Uri.parse to normalize the drive-letter
+                    // casing on Windows. JDT.LS may return URIs with a lowercase drive letter
+                    // (e.g. file:///c:/…) while VS Code registers workspace folders with an
+                    // uppercase one (file:///C:/…). VS Code's built-in copyRelativeFilePath uses
+                    // a case-sensitive URI comparison to decide whether the file belongs to a
+                    // workspace folder; if the cases differ the check fails and it falls back to
+                    // the absolute path. Reconstructing via Uri.file normalises the casing.
+                    commands.executeCommand("copyRelativeFilePath", Uri.file(Uri.parse(cmdNode.uri).fsPath));
                 }
             }),
             instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_RENAME_FILE, (node?: DataNode) => {
