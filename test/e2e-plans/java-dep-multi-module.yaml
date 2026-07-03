@@ -1,0 +1,74 @@
+# Test Plan: Java Dependency — Multi-module Maven Reactor
+#
+# Covers the Java Projects rendering path for the in-repo multi-module Maven
+# fixture where the nested module folder name (`level1`) differs from its Maven
+# artifactId / JDT project name (`de.myorg.myservice.level1`).
+#
+# Usage:
+#   npx autotest run test/e2e-plans/java-dep-multi-module.yaml --vsix <path-to-vsix>
+
+name: "Java Dependency — Multi-module Maven Reactor"
+description: |
+  Verifies that the Java Projects view renders the test/multi-module Maven
+  reactor with both root project nodes visible, accepts the nested module
+  regardless of whether the language server labels it by artifactId, project
+  name, or folder name, and shows the nested module's pom.xml when expanded.
+
+setup:
+  extension: "redhat.java"
+  vscodeVersion: "stable"
+  workspace: "../multi-module"
+  timeout: 180
+  settings:
+    java.configuration.checkProjectSettingsExclusions: false
+    workbench.startupEditor: "none"
+
+steps:
+  - id: "ls-ready"
+    action: "waitForLanguageServer"
+    timeout: 180
+
+  - id: "close-aux-bar"
+    action: "executeVSCodeCommand workbench.action.closeAuxiliaryBar"
+
+  - id: "collapse-outline"
+    action: "collapseSidebarSection OUTLINE"
+
+  - id: "collapse-timeline"
+    action: "collapseSidebarSection TIMELINE"
+
+  - id: "collapse-workspace-root"
+    action: "collapseWorkspaceRoot"
+
+  - id: "focus-java-projects"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+
+  - id: "wait-tree-load"
+    action: "wait 3 seconds"
+
+  - id: "verify-root-project"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "de.myorg.myservice"
+      exact: true
+      inView: "Java Projects"
+    timeout: 15
+
+  - id: "verify-level1-root-project"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "level1"
+      inView: "Java Projects"
+    timeout: 15
+
+  - id: "expand-level1-project"
+    action: "expandTreeItem level1"
+    waitBefore: 2
+
+  - id: "verify-level1-pom"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "pom.xml"
+      exact: true
+      inView: "Java Projects"
+    timeout: 15
