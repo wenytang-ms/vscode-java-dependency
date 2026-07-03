@@ -1,0 +1,35 @@
+name: Label Dispatch Probe
+
+# THROWAWAY capability probe: does a default GITHUB_TOKEN (github-actions[bot],
+# which has no Copilot seat) starting a Copilot coding-agent session by assignment?
+# Apply the label `copilot-start-probe` to an issue to fire this. Delete after use.
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+
+jobs:
+  assign-copilot:
+    if: github.event.label.name == 'copilot-start-probe'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign Copilot via default GITHUB_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Actor performing the assignment: github-actions[bot] (default GITHUB_TOKEN)"
+          echo "Assigning Copilot bot to issue #${{ github.event.issue.number }} ..."
+          set +e
+          gh api graphql \
+            -f query='mutation($a:ID!){ replaceActorsForAssignable(input:{assignableId:$a, actorIds:["BOT_kgDOC9w8XQ"]}){ assignable{ ... on Issue { number assignees(first:5){ nodes{ login } } } } } }' \
+            -f a='${{ github.event.issue.node_id }}'
+          rc=$?
+          echo "gh api exit code: $rc"
+          if [ $rc -ne 0 ]; then
+            echo "RESULT: mutation FAILED with default GITHUB_TOKEN (likely 403 Forbidden) -> a licensed identity (PAT/App) is required even to ASSIGN Copilot."
+          else
+            echo "RESULT: mutation SUCCEEDED -> Copilot is now an assignee. Whether a SESSION actually starts (draft copilot/* PR) is the second question — observe the issue."
+          fi
