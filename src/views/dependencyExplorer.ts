@@ -6,7 +6,7 @@ import * as fse from "fs-extra";
 import * as _ from "lodash";
 import * as path from "path";
 import {
-    commands, Disposable, ExtensionContext, QuickPickItem, TextEditor, TreeView,
+    commands, Disposable, env, ExtensionContext, QuickPickItem, TextEditor, TreeView,
     TreeViewExpansionEvent, TreeViewSelectionChangeEvent, TreeViewVisibilityChangeEvent, Uri, window, workspace,
 } from "vscode";
 import { instrumentOperationAsVsCodeCommand, sendInfo } from "vscode-extension-telemetry-wrapper";
@@ -162,11 +162,16 @@ export class DependencyExplorer implements Disposable {
                     commands.executeCommand("copyFilePath", Uri.parse(cmdNode.uri));
                 }
             }),
-            instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_COPY_RELATIVE_FILE_PATH, (node?: DataNode) => {
+            instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_COPY_RELATIVE_FILE_PATH, async (node?: DataNode) => {
                 const cmdNode = getCmdNode(this._dependencyViewer.selection, node);
                 if (cmdNode?.uri) {
                     const uri = Uri.parse(cmdNode.uri);
-                    commands.executeCommand("copyRelativeFilePath", this.normalizeUriForRelativePathCopy(uri));
+                    const relativePath = this.computeWorkspaceRelativePath(uri);
+                    if (relativePath !== undefined) {
+                        await env.clipboard.writeText(relativePath);
+                    } else {
+                        await commands.executeCommand("copyRelativeFilePath", uri);
+                    }
                 }
             }),
             instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_RENAME_FILE, (node?: DataNode) => {
@@ -220,32 +225,38 @@ export class DependencyExplorer implements Disposable {
         return this._dataProvider;
     }
 
-    private normalizeUriForRelativePathCopy(uri: Uri): Uri {
-        if (process.platform !== "win32" || uri.scheme !== "file") {
-            return uri;
+    private computeWorkspaceRelativePath(uri: Uri): string | undefined {
+        if (uri.scheme !== "file") {
+            return undefined;
         }
 
         const workspaceFolders = workspace.workspaceFolders;
         if (!workspaceFolders?.length) {
-            return uri;
+            return undefined;
         }
 
-        const normalizedPath = path.normalize(uri.fsPath);
-        const normalizedPathLower = normalizedPath.toLowerCase();
+        const normalizedFilePath = path.normalize(uri.fsPath);
+        const normalizedFilePathForComparison = process.platform === "win32"
+            ? normalizedFilePath.toLowerCase()
+            : normalizedFilePath;
         for (const folder of workspaceFolders) {
             if (folder.uri.scheme !== "file") {
                 continue;
             }
 
             const folderPath = path.normalize(folder.uri.fsPath);
-            const folderPathLower = folderPath.toLowerCase();
-            if (normalizedPathLower === folderPathLower || normalizedPathLower.startsWith(`${folderPathLower}${path.sep}`)) {
-                const relativePath = normalizedPath.slice(folderPath.length).replace(/^[/\\]/, "");
-                return Uri.file(path.join(folderPath, relativePath));
+            const normalizedFolderPathForComparison = process.platform === "win32"
+                ? folderPath.toLowerCase()
+                : folderPath;
+            if (normalizedFilePathForComparison === normalizedFolderPathForComparison) {
+                return "";
+            }
+            if (normalizedFilePathForComparison.startsWith(`${normalizedFolderPathForComparison}${path.sep}`)) {
+                return normalizedFilePath.slice(folderPath.length).replace(/^[/\\]/, "");
             }
         }
 
-        return Uri.file(uri.fsPath);
+        return undefined;
     }
 
     private async promptForProjectNode(): Promise<DataNode | undefined> {
