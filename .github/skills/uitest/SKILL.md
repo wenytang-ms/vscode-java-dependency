@@ -74,6 +74,6 @@ setup:
 
 ## CI
 
-The repository workflow `.github/workflows/e2eUI.yml` runs on push and pull requests to `main`. It lints, discovers `test/e2e-plans/*.yaml` into a matrix, builds a branch VSIX per OS, runs every plan on Windows and Linux as independent matrix cells, and uploads `test-results/` artifacts plus an aggregate summary.
+The repository workflow `.github/workflows/e2eUI.yml` runs on push and pull requests to `main`. It lints, discovers `test/e2e-plans/*.yaml` into per-OS matrices, builds a branch VSIX per OS, runs each plan as an independent regression matrix cell (expected GREEN), and uploads `test-results/` artifacts plus an aggregate summary. A plan can target one OS via a filename suffix — `<name>-windows.yaml` (Windows only), `<name>-linux.yaml` (Linux only), or `<name>.yaml` (both).
 
 Each plan surfaces as its own PR check, so a new `test/e2e-plans/*.yaml` is picked up automatically without editing the workflow.
