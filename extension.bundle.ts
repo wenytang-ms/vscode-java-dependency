@@ -31,3 +31,6 @@ export { BuildTaskProvider, categorizePaths, getFinalPaths } from "./src/tasks/b
 
 // delegate commands
 export { Jdtls } from "./src/java/jdtls";
+
+// utility
+export { normalizeFileUri } from "./src/utility";
