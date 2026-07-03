@@ -7,7 +7,7 @@ import * as _ from "lodash";
 import * as path from "path";
 import {
     commands, Disposable, ExtensionContext, QuickPickItem, TextEditor, TreeView,
-    TreeViewExpansionEvent, TreeViewSelectionChangeEvent, TreeViewVisibilityChangeEvent, Uri, window,
+    TreeViewExpansionEvent, TreeViewSelectionChangeEvent, TreeViewVisibilityChangeEvent, Uri, window, workspace,
 } from "vscode";
 import { instrumentOperationAsVsCodeCommand, sendInfo } from "vscode-extension-telemetry-wrapper";
 import { Commands } from "../commands";
@@ -165,7 +165,8 @@ export class DependencyExplorer implements Disposable {
             instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_COPY_RELATIVE_FILE_PATH, (node?: DataNode) => {
                 const cmdNode = getCmdNode(this._dependencyViewer.selection, node);
                 if (cmdNode?.uri) {
-                    commands.executeCommand("copyRelativeFilePath", Uri.parse(cmdNode.uri));
+                    const uri = Uri.parse(cmdNode.uri);
+                    commands.executeCommand("copyRelativeFilePath", this.normalizeUriForRelativePathCopy(uri));
                 }
             }),
             instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_RENAME_FILE, (node?: DataNode) => {
@@ -217,6 +218,34 @@ export class DependencyExplorer implements Disposable {
 
     public get dataProvider(): DependencyDataProvider {
         return this._dataProvider;
+    }
+
+    private normalizeUriForRelativePathCopy(uri: Uri): Uri {
+        if (process.platform !== "win32" || uri.scheme !== "file") {
+            return uri;
+        }
+
+        const workspaceFolders = workspace.workspaceFolders;
+        if (!workspaceFolders?.length) {
+            return uri;
+        }
+
+        const normalizedPath = path.normalize(uri.fsPath);
+        const normalizedPathLower = normalizedPath.toLowerCase();
+        for (const folder of workspaceFolders) {
+            if (folder.uri.scheme !== "file") {
+                continue;
+            }
+
+            const folderPath = path.normalize(folder.uri.fsPath);
+            const folderPathLower = folderPath.toLowerCase();
+            if (normalizedPathLower === folderPathLower || normalizedPathLower.startsWith(`${folderPathLower}${path.sep}`)) {
+                const relativePath = normalizedPath.slice(folderPath.length).replace(/^[/\\]/, "");
+                return Uri.file(path.join(folderPath, relativePath));
+            }
+        }
+
+        return Uri.file(uri.fsPath);
     }
 
     private async promptForProjectNode(): Promise<DataNode | undefined> {
