@@ -1,0 +1,116 @@
+{
+  "planName": "Repro Issue 1 — Copy Relative Path must not copy absolute path on Windows",
+  "startTime": "2026-07-02T09:04:53.142Z",
+  "endTime": "2026-07-02T09:08:59.081Z",
+  "duration": 245939,
+  "results": [
+    {
+      "stepId": "ls-ready",
+      "action": "waitForLanguageServer",
+      "status": "error",
+      "reason": "Language Server did not become ready within timeout",
+      "duration": 181881,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/02_ls-ready_error.png"
+    },
+    {
+      "stepId": "close-aux-bar",
+      "action": "executeVSCodeCommand workbench.action.closeAuxiliaryBar",
+      "status": "pass",
+      "duration": 2193,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/04_close-aux-bar_after.png"
+    },
+    {
+      "stepId": "collapse-outline",
+      "action": "collapseSidebarSection OUTLINE",
+      "status": "pass",
+      "duration": 167,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/06_collapse-outline_after.png"
+    },
+    {
+      "stepId": "collapse-timeline",
+      "action": "collapseSidebarSection TIMELINE",
+      "status": "pass",
+      "duration": 166,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/08_collapse-timeline_after.png"
+    },
+    {
+      "stepId": "collapse-workspace-root",
+      "action": "collapseWorkspaceRoot",
+      "status": "pass",
+      "duration": 150,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/10_collapse-workspace-root_after.png"
+    },
+    {
+      "stepId": "focus-java-projects",
+      "action": "executeVSCodeCommand javaProjectExplorer.focus",
+      "status": "pass",
+      "duration": 2188,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/12_focus-java-projects_after.png"
+    },
+    {
+      "stepId": "wait-tree-load",
+      "action": "wait 3 seconds",
+      "status": "pass",
+      "duration": 3163,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/14_wait-tree-load_after.png"
+    },
+    {
+      "stepId": "open-target-file",
+      "action": "open file App.java",
+      "status": "pass",
+      "duration": 3210,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/16_open-target-file_after.png"
+    },
+    {
+      "stepId": "collapse-workspace-root-2",
+      "action": "collapseWorkspaceRoot",
+      "status": "pass",
+      "duration": 944,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/18_collapse-workspace-root-2_after.png"
+    },
+    {
+      "stepId": "focus-java-projects-2",
+      "action": "executeVSCodeCommand javaProjectExplorer.focus",
+      "status": "pass",
+      "duration": 2679,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/20_focus-java-projects-2_after.png"
+    },
+    {
+      "stepId": "select-app",
+      "action": "click App tree item exact",
+      "status": "error",
+      "reason": "locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n  - waiting for getByRole('treeitem').filter({ has: locator('.label-name').filter({ hasText: /^App$/ }) }).locator('a').first() to be visible\n",
+      "duration": 16187,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/22_select-app_error.png"
+    },
+    {
+      "stepId": "seed-clipboard",
+      "action": "writeClipboard __SENTINEL_BEFORE_COPY_RELATIVE__",
+      "status": "pass",
+      "duration": 162,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/24_seed-clipboard_after.png"
+    },
+    {
+      "stepId": "invoke-copy-relative-file-path",
+      "action": "executeVSCodeCommand java.view.package.copyRelativeFilePath",
+      "status": "pass",
+      "duration": 3188,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/26_invoke-copy-relative-file-path_after.png"
+    },
+    {
+      "stepId": "verify-relative-path",
+      "action": "wait 1 seconds",
+      "status": "fail",
+      "reason": "Clipboard does not contain: \"App.java\". Clipboard text: \"__SENTINEL_BEFORE_COPY_RELATIVE__\"",
+      "duration": 11197,
+      "screenshot": "/home/runner/work/vscode-java-dependency/vscode-java-dependency/test-results/repro-issue-1-windows/screenshots/28_verify-relative-path_after.png"
+    }
+  ],
+  "summary": {
+    "total": 14,
+    "passed": 11,
+    "failed": 1,
+    "skipped": 0,
+    "errors": 2
+  }
+}

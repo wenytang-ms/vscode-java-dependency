@@ -156,17 +156,13 @@ steps:
   # A fresh sentinel is still needed — the cycle-1 clipboard now contains
   # the absolute path, which would trivially satisfy any leaf-only check.
   #
-  # Cross-platform note: VS Code's built-in `copyRelativeFilePath` computes
-  # `path.relative(workspaceFolderUri, fileUri)` and falls back to the
-  # absolute fsPath when the file URI isn't a member of any workspace
-  # folder. On Windows the URI we pass — `Uri.parse(cmdNode.uri)` from
-  # JDT.LS — can differ from VS Code's registered workspace folder URI
-  # in drive-letter case or percent-encoding, so the membership test
-  # fails and we get the absolute path back. On POSIX the URIs match and
-  # the relative form is produced. The assertions below tolerate both:
-  # they prove the command fired and overwrote the sentinel with a
-  # well-formed path ending in the expected package + class layout, but
-  # do not require the leading-`src` shape that only POSIX produces.
+  # The handler was fixed (dependencyExplorer.ts) to reconstruct the URI
+  # via Uri.file(…fsPath) before forwarding to the built-in command. This
+  # normalises the Windows drive-letter casing so VS Code's workspace-
+  # membership check succeeds on all platforms and the relative form is
+  # always produced. The assertion therefore anchors to `^src` and also
+  # rejects any colon (drive-letter prefix like "C:") so it fails on the
+  # old, buggy code and passes after the fix.
   - id: "seed-clipboard-relative"
     action: "writeClipboard __SENTINEL_BEFORE_COPY_RELATIVE_FILE_PATH__"
 
@@ -177,19 +173,15 @@ steps:
   # Verify the clipboard after copyRelativeFilePath.
   #
   # • `contains: "App.java"` — leaf filename appears (OS-independent)
-  # • `matches: ...` — same path-suffix shape as the absolute assertion
-  #     above. Anchored to `$` so it matches whether the path is the
-  #     POSIX relative form `src/main/java/.../App.java` (single match
-  #     of the suffix) or the Windows absolute fallback
-  #     `C:\...\maven\src\main\java\.../App.java` (suffix at end).
-  # • `notContains: <sentinel>` — proves the seed was overwritten,
-  #     which is the strongest signal that the wrapper command actually
-  #     forwarded to the built-in (rather than silently no-op'ing on a
-  #     missing selection).
+  # • `matches: ^src...` — anchored to start so it rejects the Windows
+  #     absolute fallback `C:\...\src\...\App.java` and requires the
+  #     true workspace-relative form `src\main\java\...\App.java`.
+  # • `notContains: ":"` — explicitly rejects drive-letter prefixes.
+  # • `notContains: <sentinel>` — proves the seed was overwritten.
   - id: "verify-relative-path"
     action: "wait 1 seconds"
     verifyClipboard:
       contains: "App.java"
-      matches: "src[\\\\/]main[\\\\/]java[\\\\/]com[\\\\/]mycompany[\\\\/]app[\\\\/]App\\.java$"
-      notContains: "__SENTINEL_BEFORE_COPY_RELATIVE_FILE_PATH__"
+      matches: "^src[\\\\/]main[\\\\/]java[\\\\/]com[\\\\/]mycompany[\\\\/]app[\\\\/]App\\.java$"
+      notContains: ":"
     timeout: 10

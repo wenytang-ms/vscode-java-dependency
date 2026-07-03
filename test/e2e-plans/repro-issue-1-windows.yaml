@@ -1,0 +1,119 @@
+# Regression plan: Copy Relative Path copies an absolute path on Windows
+# Issue: https://github.com/wenytang-ms/vscode-java-dependency/issues/1
+#
+# Root cause
+# ──────────
+# JDT.LS returns file URIs whose Windows drive letter may be lowercase
+# (e.g. file:///c:/Users/…), while VS Code registers workspace folders
+# with an uppercase drive letter (file:///C:/Users/…).
+# copyRelativeFilePath does a URI-string comparison to check workspace
+# membership; the casing mismatch makes the check fail and VS Code falls
+# back to copying the absolute path.
+#
+# Fix
+# ───
+# In dependencyExplorer.ts, reconstruct the URI via Uri.file(…fsPath)
+# before forwarding to the built-in copyRelativeFilePath. Uri.file()
+# normalises the drive-letter casing, making the workspace-membership
+# check succeed.
+#
+# Red→green gate
+# ──────────────
+# This plan is named *-windows.yaml so the CI gate runs it on Windows
+# only (the bug does not manifest on Linux/macOS). The decisive verifier
+# (`verify-relative-path`) anchors its regex to `^src` — it fails on the
+# buggy build (clipboard holds the absolute path `C:\…\src\…`) and passes
+# after the fix (clipboard holds the relative path `src\…`).
+#
+# Usage:
+#   npx -y @vscjava/vscode-autotest validate test\e2e-plans\repro-issue-1-windows.yaml
+#   npm run build-server
+#   npx @vscode/vsce package -o vscode-java-dependency.vsix
+#   npx -y @vscjava/vscode-autotest run test\e2e-plans\repro-issue-1-windows.yaml --vsix vscode-java-dependency.vsix --no-llm --output test-results\repro-issue-1-windows
+
+name: "Repro Issue 1 — Copy Relative Path must not copy absolute path on Windows"
+description: |
+  Reproduces the Windows-only bug where java.view.package.copyRelativeFilePath
+  puts an absolute path (C:\…\src\…\App.java) on the clipboard instead of the
+  workspace-relative path (src\main\java\com\mycompany\app\App.java).
+  The decisive verifier anchors to ^src so it fails on the buggy build and
+  passes after the drive-letter normalisation fix.
+
+setup:
+  extension: "redhat.java"
+  vscodeVersion: "stable"
+  workspace: "../maven"
+  timeout: 180
+  settings:
+    java.configuration.checkProjectSettingsExclusions: false
+    workbench.startupEditor: "none"
+
+steps:
+  # ── Wait for Java language server ──
+  - id: "ls-ready"
+    action: "waitForLanguageServer"
+    timeout: 180
+
+  # ── Free up sidebar space ──
+  - id: "close-aux-bar"
+    action: "executeVSCodeCommand workbench.action.closeAuxiliaryBar"
+
+  - id: "collapse-outline"
+    action: "collapseSidebarSection OUTLINE"
+
+  - id: "collapse-timeline"
+    action: "collapseSidebarSection TIMELINE"
+
+  - id: "collapse-workspace-root"
+    action: "collapseWorkspaceRoot"
+
+  # ── Focus the Java Projects view ──
+  - id: "focus-java-projects"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+
+  - id: "wait-tree-load"
+    action: "wait 3 seconds"
+
+  # ── Open App.java so link-with-editor selects it in the tree ──
+  - id: "open-target-file"
+    action: "open file App.java"
+    waitBefore: 2
+
+  - id: "collapse-workspace-root-2"
+    action: "collapseWorkspaceRoot"
+
+  - id: "focus-java-projects-2"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    waitBefore: 2
+
+  # Click the exact "App" leaf node to make it the active tree selection.
+  # Using `exact` avoids the project root "my-app" being matched first.
+  - id: "select-app"
+    action: "click App tree item exact"
+    waitBefore: 1
+
+  # ── Seed a sentinel so we can prove the clipboard was written ──
+  - id: "seed-clipboard"
+    action: "writeClipboard __SENTINEL_BEFORE_COPY_RELATIVE__"
+
+  # ── Invoke the command under test ──
+  - id: "invoke-copy-relative-file-path"
+    action: "executeVSCodeCommand java.view.package.copyRelativeFilePath"
+    waitBefore: 1
+
+  # ── Decisive assertion ──
+  # The regex is anchored to `^src` so it only matches a path that begins
+  # with "src" (the workspace-relative form). On the buggy build the
+  # clipboard holds the absolute path "C:\…\src\…\App.java"; the `^src`
+  # anchor does not match → RED. After the fix the clipboard holds
+  # "src\main\java\com\mycompany\app\App.java" → GREEN.
+  #
+  # `notContains: ":"` additionally rejects drive-letter prefixes like
+  # "C:" and provides a human-readable failure hint in results.json.
+  - id: "verify-relative-path"
+    action: "wait 1 seconds"
+    verifyClipboard:
+      contains: "App.java"
+      matches: "^src[\\\\/]main[\\\\/]java[\\\\/]com[\\\\/]mycompany[\\\\/]app[\\\\/]App\\.java$"
+      notContains: ":"
+    timeout: 10
