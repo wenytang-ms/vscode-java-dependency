@@ -116,7 +116,15 @@ jobs:
           repro_linux=$(printf '%s\n' "$repro"   | grep -v -- '-windows$' || true)
           repro_windows=$(printf '%s\n' "$repro" | grep -v -- '-linux$'   || true)
 
-          to_json() { printf '%s\n' "$1" | grep -v '^[[:space:]]*$' | jq -R . | jq -sc .; }
+          to_json() {
+            local cleaned
+            cleaned=$(printf '%s\n' "$1" | grep -v '^[[:space:]]*$' || true)
+            if [ -z "$cleaned" ]; then
+              echo '[]'
+            else
+              printf '%s\n' "$cleaned" | jq -R . | jq -sc .
+            fi
+          }
           reg_json=$(to_json "$regression")
           linux_json=$(to_json "$repro_linux")
           windows_json=$(to_json "$repro_windows")
