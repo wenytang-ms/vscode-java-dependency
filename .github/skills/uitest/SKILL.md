@@ -37,16 +37,35 @@ npx @vscode/vsce package -o vscode-java-dependency.vsix
 6. Run the plan against the packaged VSIX:
 
 ```powershell
+# Local (Windows / macOS with a desktop):
 npx -y @vscjava/vscode-autotest run test\e2e-plans\<name>.yaml --vsix vscode-java-dependency.vsix --output test-results\<name>
 ```
 
    Add `--no-llm` to skip natural-language `verify:` fields and rely only on deterministic verifiers for a fast local loop. Run the whole suite with `npm run test-e2e` (`autotest run-all test/e2e-plans --no-llm`).
+
+   **On Linux / the Copilot coding agent the run is headless — there is NO running X display.** The `xvfb` package is installed but not started (and there is no `DISPLAY`), so a bare `autotest run` cannot launch VS Code and dies with `cannot open display`. Wrap the run in `xvfb-run` (matching CI's screen size, which the Java Projects view needs for vertical space):
+
+```bash
+xvfb-run -a --server-args="-screen 0 1920x1080x24" \
+  npx -y @vscjava/vscode-autotest run test/e2e-plans/<name>.yaml \
+  --vsix vscode-java-dependency.vsix --no-llm --output test-results/<name>
+```
 
 7. Inspect `test-results/<name>/results.json` and `test-results/<name>/screenshots/`.
 8. Iterate based on the failure cause:
    - **Incorrect plan**: fix the YAML and rerun step 6. No rebuild is needed.
    - **Product code fix**: after editing extension source (`src/**`) or the OSGi bundle (`jdtls.ext/**`), re-run step 5 (rebuild + repackage the VSIX) before rerunning step 6. Never rerun against a stale VSIX.
    - **Product bug (report only)**: report the observed behavior and cite the failing step, screenshot, and result reason.
+
+## Proof gate — self-run before every PR
+
+**Do not open a PR for a new or changed plan until you have run it yourself and observed the decisive verifier pass.** A plausible-looking plan that was never executed is not coverage — an unverified plan that silently fails helps no one.
+
+- Run the plan in this session (use the `xvfb-run` form above on the agent) and read `test-results/<name>/results.json`.
+- For **new coverage** (not a bug fix) the plan must be **GREEN** against current code. Quote the decisive step's `status: pass` and the value it observed (e.g. the tree label) in the PR body as evidence.
+- For a **bug repro**, prove **red→green** (see the `repro` skill).
+- If you genuinely cannot launch VS Code (e.g. `cannot open display` even under `xvfb-run`, or a cold `.vscode-test` cache), **say so explicitly in the PR** and do not claim the plan passes. Never assert a GREEN you did not observe.
+- **Do not guess a tree label with `exact: true`.** Node labels come from the language server, not the folder name or `pom.xml`. Run the plan and copy the exact `displayName` the run reports — JDT often prefixes the Eclipse `.project` name (e.g. the `test/multi-module` fixture surfaces as `fvclaus-de.myorg.myservice`, not `de.myorg.myservice`).
 
 ## Authoring rules
 

@@ -4,10 +4,18 @@ name: "Copilot Setup Steps"
 # build this extension and reproduce bugs with AutoTest UI/E2E plans without a
 # slow trial-and-error dependency hunt.
 #
-# The `copilot-setup-steps` job runs BEFORE Copilot starts working. It mirrors
-# the Linux path of `.github/workflows/e2eUI.yml`: JDK 21 + Node 20, the OSGi
-# bundle build (which also warms the Maven cache), the AutoTest CLI, and the
-# Xvfb / GTK libraries required to launch VS Code headless.
+# The `copilot-setup-steps` job runs BEFORE Copilot starts working. It installs
+# the same toolchain as the Linux path of `.github/workflows/e2eUI.yml`: JDK 21 +
+# Node 20, the OSGi bundle build (which also warms the Maven cache), the AutoTest
+# CLI, and the `xvfb` / GTK packages needed to launch VS Code headless.
+#
+# NOTE ON DISPLAY: this only INSTALLS the `xvfb` package — it does not start an
+# X server, and a background `Xvfb &` here would not survive into the agent's
+# session anyway. So the agent has NO running `DISPLAY`. When it needs to launch
+# VS Code for a UI run it must wrap the command in `xvfb-run` itself, e.g.
+#   xvfb-run -a --server-args="-screen 0 1920x1080x24" npx @vscjava/vscode-autotest run ...
+# (see the `uitest` / `repro` skills). A bare `autotest run` here dies with
+# `cannot open display`.
 #
 # NOTE: This workflow only takes effect once it is on the default branch.
 #

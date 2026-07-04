@@ -84,6 +84,14 @@ npx @vscode/vsce package -o vscode-java-dependency.vsix
 npx -y @vscjava/vscode-autotest run test\e2e-plans\repro-issue-<n>.yaml --vsix vscode-java-dependency.vsix --no-llm --output test-results\repro-issue-<n>
 ```
 
+**On Linux / the coding agent the run is headless** — the `xvfb` package is installed but not started (and there is no `DISPLAY`), so a bare `autotest run` fails with `cannot open display`. Wrap the run command in `xvfb-run` (matching CI's screen size):
+
+```bash
+xvfb-run -a --server-args="-screen 0 1920x1080x24" \
+  npx -y @vscjava/vscode-autotest run test/e2e-plans/repro-issue-<n>.yaml \
+  --vsix vscode-java-dependency.vsix --no-llm --output test-results/repro-issue-<n>
+```
+
 **If the bug is OS-specific, name the plan for that OS.** The filename suffix documents which OS the behavior manifests on, so a later human or on-OS run executes it only where it applies:
 
 - `repro-issue-<n>-windows.yaml` — a **Windows-only** bug (e.g. drive-letter / path-separator / `\`-vs-`/` issues). A Linux agent cannot run *this UI plan* itself. **First reduce the defect to a platform-injectable pure function + simulated-platform unit test (§2), which DOES go red→green in your Linux session** — that unit test is your fix-proof. Commit the `-windows` UI plan as a regression artifact alongside it. Only when the bug genuinely cannot be reduced to injectable logic (it lives in VS Code's own rendering) do you fall back to reasoning + code read, and say plainly on the PR that you could not self-run the UI proof.
@@ -138,7 +146,7 @@ Every PR or comment must state **how you reproduced** (UI plan vs unit test vs c
 
 ## Environment notes
 
-- The Copilot coding agent environment is prepared by `.github/workflows/copilot-setup-steps.yml` (JDK 21, Node 20, AutoTest, Xvfb, a baseline VSIX). Assume these are present.
+- The Copilot coding agent environment is prepared by `.github/workflows/copilot-setup-steps.yml` (JDK 21, Node 20, AutoTest, the `xvfb` package, a baseline VSIX). These are installed, but **Xvfb is NOT started for you and there is no `DISPLAY`** — on Linux you must launch every UI run under `xvfb-run -a --server-args="-screen 0 1920x1080x24"` (see §4), or VS Code cannot open a display and the run dies at launch.
 - That setup runs **before the agent firewall**, and its final step pre-downloads the **latest** VS Code (`stable`) and the `vscjava.vscode-java-pack` extensions into AutoTest's `<repo>/.vscode-test` cache (via `.github/scripts/prewarm-vscode.js`). Keep the plans on `vscodeVersion: "stable"` (do **not** pin a version) — `stable` always means the current latest release, and it is exactly what the pre-warm cached.
 - **A `(dns block)` on `update.code.visualstudio.com` at run time is EXPECTED and NON-FATAL — do not treat it as a UI-test failure or abandon the UI path.** AutoTest re-resolves `stable` over the network at launch; the firewall blocks that, but `@vscode/test-electron` catches it and **falls back to the already-cached latest VS Code**, and the Java extensions are already installed in `.vscode-test/extensions`. So the editor still launches offline. VS Code's own telemetry/Marketplace DNS calls are blocked too and are equally harmless.
 - Only if the pre-warm genuinely did not run (e.g. an older branch, or a cold `.vscode-test` with no cached build) will the UI run actually fail to launch. In that case fall back to the non-UI path and note the limitation.
