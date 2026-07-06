@@ -6,8 +6,9 @@ import * as fse from "fs-extra";
 import * as _ from "lodash";
 import * as path from "path";
 import {
-    commands, Disposable, ExtensionContext, QuickPickItem, TextEditor, TreeView,
+    commands, Disposable, env, ExtensionContext, QuickPickItem, TextEditor, TreeView,
     TreeViewExpansionEvent, TreeViewSelectionChangeEvent, TreeViewVisibilityChangeEvent, Uri, window,
+    workspace,
 } from "vscode";
 import { instrumentOperationAsVsCodeCommand, sendInfo } from "vscode-extension-telemetry-wrapper";
 import { Commands } from "../commands";
@@ -162,10 +163,17 @@ export class DependencyExplorer implements Disposable {
                     commands.executeCommand("copyFilePath", Uri.parse(cmdNode.uri));
                 }
             }),
-            instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_COPY_RELATIVE_FILE_PATH, (node?: DataNode) => {
+            instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_COPY_RELATIVE_FILE_PATH, async (node?: DataNode) => {
                 const cmdNode = getCmdNode(this._dependencyViewer.selection, node);
                 if (cmdNode?.uri) {
-                    commands.executeCommand("copyRelativeFilePath", Uri.parse(cmdNode.uri));
+                    const parsedUri = Uri.parse(cmdNode.uri);
+                    const uri = parsedUri.scheme === "file" ? Uri.file(parsedUri.fsPath) : parsedUri;
+                    const relativePath = parsedUri.scheme === "file" ? getWorkspaceRelativePath(uri) : undefined;
+                    if (relativePath !== undefined) {
+                        await env.clipboard.writeText(relativePath);
+                    } else {
+                        await commands.executeCommand("copyRelativeFilePath", uri);
+                    }
                 }
             }),
             instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_RENAME_FILE, (node?: DataNode) => {
@@ -245,4 +253,27 @@ export class DependencyExplorer implements Disposable {
 
 interface IProjectPickItem extends QuickPickItem {
     node: ExplorerNode;
+}
+
+function getWorkspaceRelativePath(uri: Uri): string | undefined {
+    if (!workspace.workspaceFolders) {
+        return undefined;
+    }
+
+    const uriFsPath = path.resolve(uri.fsPath);
+    const workspaceFolder = _.maxBy(
+        workspace.workspaceFolders.filter((folder) => containsPath(uriFsPath, path.resolve(folder.uri.fsPath))),
+        (folder) => folder.uri.fsPath.length,
+    );
+
+    if (!workspaceFolder) {
+        return undefined;
+    }
+
+    return path.relative(workspaceFolder.uri.fsPath, uriFsPath).replace(/\\/g, "/");
+}
+
+function containsPath(candidate: string, parent: string): boolean {
+    const relativePath = path.relative(parent, candidate);
+    return relativePath === "" || (!!relativePath && !relativePath.startsWith("..") && !path.isAbsolute(relativePath));
 }
