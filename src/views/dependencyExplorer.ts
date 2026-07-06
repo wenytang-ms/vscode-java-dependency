@@ -7,7 +7,7 @@ import * as _ from "lodash";
 import * as path from "path";
 import {
     commands, Disposable, ExtensionContext, QuickPickItem, TextEditor, TreeView,
-    TreeViewExpansionEvent, TreeViewSelectionChangeEvent, TreeViewVisibilityChangeEvent, Uri, window,
+    TreeViewExpansionEvent, TreeViewSelectionChangeEvent, TreeViewVisibilityChangeEvent, Uri, window, workspace,
 } from "vscode";
 import { instrumentOperationAsVsCodeCommand, sendInfo } from "vscode-extension-telemetry-wrapper";
 import { Commands } from "../commands";
@@ -165,7 +165,7 @@ export class DependencyExplorer implements Disposable {
             instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_COPY_RELATIVE_FILE_PATH, (node?: DataNode) => {
                 const cmdNode = getCmdNode(this._dependencyViewer.selection, node);
                 if (cmdNode?.uri) {
-                    commands.executeCommand("copyRelativeFilePath", Uri.parse(cmdNode.uri));
+                    commands.executeCommand("copyRelativeFilePath", toWorkspaceUri(Uri.parse(cmdNode.uri)));
                 }
             }),
             instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_RENAME_FILE, (node?: DataNode) => {
@@ -241,6 +241,25 @@ export class DependencyExplorer implements Disposable {
             return choice?.node as DataNode;
         }
     }
+}
+
+function toWorkspaceUri(uri: Uri): Uri {
+    const folders = workspace.workspaceFolders;
+    if (!folders) {
+        return uri;
+    }
+
+    for (const folder of folders) {
+        const relativePath = path.relative(folder.uri.fsPath, uri.fsPath);
+        if (relativePath === "") {
+            return folder.uri;
+        }
+        if (!relativePath.startsWith("..") && !path.isAbsolute(relativePath)) {
+            return Uri.joinPath(folder.uri, ...relativePath.split(/[\\/]+/));
+        }
+    }
+
+    return uri;
 }
 
 interface IProjectPickItem extends QuickPickItem {
