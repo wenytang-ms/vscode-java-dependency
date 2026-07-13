@@ -57,16 +57,11 @@ steps:
     action: "expandTreeItem com.mycompany.app"
 
   # `expandTreeItem App` can substring-match the already-expanded `my-app`
-  # project row. Select the exact class row instead, then use the tree's
-  # keyboard disclosure behavior.
-  - id: "select-exact-app-class"
-    action: "click App tree item exact"
-
-  # The class command may move workbench focus while opening App.java even
-  # though it requests preserveFocus. Refocus the view so ArrowRight operates
-  # on the selected App row on every platform.
-  - id: "refocus-selected-app-class"
-    action: "executeVSCodeCommand javaProjectExplorer.focus"
+  # project row, while clicking App executes its open-file command. The package
+  # row remains keyboard-focused after its disclosure control is clicked, and
+  # App is its first child in the fixture. Move to App without invoking it.
+  - id: "select-app-class-with-keyboard"
+    action: "pressKey ArrowRight"
 
   - id: "expand-selected-app-class"
     action: "pressKey ArrowRight"
@@ -74,29 +69,8 @@ steps:
   - id: "wait-for-initial-member-load"
     action: "wait 3 seconds"
 
-  # Wait for asynchronous document-symbol loading before closing the setup tab.
+  # Wait for asynchronous document-symbol loading.
   - id: "verify-main-member-loaded"
-    action: "wait 1 seconds"
-    verifyTreeItem:
-      name: "main(String[]) : void"
-      exact: true
-      inView: "Java Projects"
-    timeout: 20
-
-  # Selecting the type executes its open-file command. Close that setup tab so
-  # only the subsequent member click can satisfy the navigation assertion.
-  - id: "close-app-after-class-expansion"
-    action: "executeVSCodeCommand workbench.action.closeAllEditors"
-
-  - id: "refocus-java-projects-after-close"
-    action: "executeVSCodeCommand javaProjectExplorer.focus"
-
-  - id: "wait-for-class-members"
-    action: "wait 1 seconds"
-
-  # Re-verify after closing App.java. This screenshot captures the expanded
-  # member in the action-dependent pre-click state with no editor already open.
-  - id: "verify-main-member-visible"
     action: "wait 1 seconds"
     verifyTreeItem:
       name: "main(String[]) : void"
