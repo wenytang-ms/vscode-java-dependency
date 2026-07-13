@@ -58,16 +58,33 @@ steps:
 
   # `expandTreeItem App` can substring-match the already-expanded `my-app`
   # project row. Select the exact class row instead, then use the tree's
-  # keyboard disclosure behavior. PrimaryTypeNode opens App.java with
-  # preserveFocus, so ArrowRight still acts on the selected tree row.
+  # keyboard disclosure behavior.
   - id: "select-exact-app-class"
     action: "click App tree item exact"
+
+  # The class command may move workbench focus while opening App.java even
+  # though it requests preserveFocus. Refocus the view so ArrowRight operates
+  # on the selected App row on every platform.
+  - id: "refocus-selected-app-class"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
 
   - id: "expand-selected-app-class"
     action: "pressKey ArrowRight"
 
-  # Selecting the type can execute its open-file command. Close that setup tab
-  # so only the subsequent member click can satisfy the navigation assertion.
+  - id: "wait-for-initial-member-load"
+    action: "wait 3 seconds"
+
+  # Wait for asynchronous document-symbol loading before closing the setup tab.
+  - id: "verify-main-member-loaded"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "main(String[]) : void"
+      exact: true
+      inView: "Java Projects"
+    timeout: 20
+
+  # Selecting the type executes its open-file command. Close that setup tab so
+  # only the subsequent member click can satisfy the navigation assertion.
   - id: "close-app-after-class-expansion"
     action: "executeVSCodeCommand workbench.action.closeAllEditors"
 
@@ -75,10 +92,10 @@ steps:
     action: "executeVSCodeCommand javaProjectExplorer.focus"
 
   - id: "wait-for-class-members"
-    action: "wait 2 seconds"
+    action: "wait 1 seconds"
 
-  # This steady-state step captures the expanded class and is the decisive
-  # assertion that showMembers exposed the JDT document symbol in the tree.
+  # Re-verify after closing App.java. This screenshot captures the expanded
+  # member in the action-dependent pre-click state with no editor already open.
   - id: "verify-main-member-visible"
     action: "wait 1 seconds"
     verifyTreeItem:
