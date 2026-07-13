@@ -56,10 +56,26 @@ steps:
   - id: "expand-application-package"
     action: "expandTreeItem com.mycompany.app"
 
-  # expandTreeItem uses the disclosure control, so expanding the type does not
-  # execute PrimaryTypeNode's command or open App.java.
-  - id: "expand-app-class"
-    action: "expandTreeItem App"
+  # `expandTreeItem App` can substring-match the already-expanded `my-app`
+  # project row. Select the exact class row instead, then use the tree's
+  # keyboard disclosure behavior. PrimaryTypeNode opens App.java with
+  # preserveFocus, so ArrowRight still acts on the selected tree row.
+  - id: "select-exact-app-class"
+    action: "click App tree item exact"
+
+  - id: "expand-selected-app-class"
+    action: "pressKey ArrowRight"
+
+  # Selecting the type can execute its open-file command. Close that setup tab
+  # so only the subsequent member click can satisfy the navigation assertion.
+  - id: "close-app-after-class-expansion"
+    action: "executeVSCodeCommand workbench.action.closeAllEditors"
+
+  - id: "refocus-java-projects-after-close"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+
+  - id: "wait-for-class-members"
+    action: "wait 2 seconds"
 
   # This steady-state step captures the expanded class and is the decisive
   # assertion that showMembers exposed the JDT document symbol in the tree.
