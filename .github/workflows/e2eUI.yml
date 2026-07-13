@@ -5,6 +5,12 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      plans:
+        description: JSON array of E2E plan basenames to run
+        required: true
+        type: string
 
 # Split-pipeline E2E UI regression workflow.
 #
@@ -36,6 +42,7 @@ jobs:
   # ── Lint + Checkstyle (OS-agnostic) ─────────────────────
   lint:
     name: Lint & Checkstyle
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -75,8 +82,29 @@ jobs:
       - name: Scan test plans
         id: scan
         shell: bash
+        env:
+          REQUESTED_PLANS: ${{ inputs.plans }}
         run: |
-          all=$(ls test/e2e-plans/*.yaml | xargs -n1 basename | sed 's/\.yaml$//')
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            plans=$(printf '%s' "$REQUESTED_PLANS" | jq -ce '
+              if type != "array" or length == 0 then
+                error("plans must be a non-empty JSON array")
+              elif any(.[]; (type != "string") or (test("^[A-Za-z0-9._-]+$") | not)) then
+                error("plans contains an invalid basename")
+              else
+                unique
+              end
+            ')
+            while IFS= read -r plan; do
+              test -f "test/e2e-plans/${plan}.yaml" || {
+                echo "Unknown E2E plan: $plan" >&2
+                exit 1
+              }
+            done < <(printf '%s' "$plans" | jq -r '.[]')
+            all=$(printf '%s' "$plans" | jq -r '.[]')
+          else
+            all=$(ls test/e2e-plans/*.yaml | xargs -n1 basename | sed 's/\.yaml$//')
+          fi
 
           # Every plan is an ordinary regression test: run once, expect GREEN.
           # A plan may target a single OS via a filename suffix:
