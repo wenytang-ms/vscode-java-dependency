@@ -73,7 +73,7 @@ steps:
   - id: "verify-main-member-loaded"
     action: "wait 1 seconds"
     verifyTreeItem:
-      name: "main(String[]) : void"
+      name: "main(String[])"
       exact: true
       inView: "Java Projects"
     timeout: 20
@@ -81,7 +81,7 @@ steps:
   # Use the real tree row rather than executeVSCodeCommand. The exact modifier
   # prevents a partial-label match from selecting another tree item.
   - id: "click-main-member"
-    action: "click main(String[]) : void tree item exact"
+    action: "click main(String[]) tree item exact"
 
   # Keep the postcondition separate from the target action. A negative-control
   # run with click-main-member removed therefore fails here instead of losing
