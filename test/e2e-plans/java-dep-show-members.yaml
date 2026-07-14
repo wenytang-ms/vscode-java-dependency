@@ -1,0 +1,100 @@
+# Test Plan: Java Dependency — Show Class Members
+#
+# Covers the java.dependency.showMembers path in the Java Projects explorer.
+# PrimaryTypeNode loads document symbols only when this setting is enabled,
+# and clicking a DocumentSymbolNode navigates through java.view.package.outline.
+
+name: "Java Dependency — Show Class Members"
+description: |
+  Expands App in the Java Projects explorer, verifies its main method is shown,
+  and clicks that member through the tree to open App.java at the method.
+
+setup:
+  extension: "vscjava.vscode-java-pack"
+  vscodeVersion: "stable"
+  workspace: "../maven"
+  timeout: 180
+  settings:
+    java.configuration.checkProjectSettingsExclusions: false
+    java.dependency.showMembers: true
+    workbench.startupEditor: "none"
+
+steps:
+  - id: "wait-for-java-language-server"
+    action: "waitForLanguageServer"
+    timeout: 180
+
+  - id: "close-auxiliary-bar"
+    action: "executeVSCodeCommand workbench.action.closeAuxiliaryBar"
+
+  - id: "collapse-outline"
+    action: "collapseSidebarSection OUTLINE"
+
+  - id: "collapse-timeline"
+    action: "collapseSidebarSection TIMELINE"
+
+  - id: "collapse-workspace-explorer"
+    action: "collapseSidebarSection maven"
+
+  # Ensure the final editor assertion can only pass after the member click.
+  - id: "close-all-editors-before-navigation"
+    action: "executeVSCodeCommand workbench.action.closeAllEditors"
+
+  - id: "focus-java-projects"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+
+  - id: "wait-for-project-tree"
+    action: "wait 3 seconds"
+
+  - id: "expand-project"
+    action: "expandTreeItem my-app"
+
+  - id: "expand-main-source-root"
+    action: "expandTreeItem src/main/java"
+
+  - id: "expand-application-package"
+    action: "expandTreeItem com.mycompany.app"
+
+  - id: "verify-app-class-visible"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "App"
+      exact: true
+      inView: "Java Projects"
+    timeout: 20
+
+  # `expandTreeItem App` can substring-match the already-expanded `my-app`
+  # project row, while clicking App executes its open-file command. The package
+  # row remains keyboard-focused after its disclosure control is clicked, and
+  # App is its first child in the fixture. Move to App without invoking it.
+  - id: "select-app-class-with-keyboard"
+    action: "pressKey ArrowRight"
+
+  - id: "expand-selected-app-class"
+    action: "pressKey ArrowRight"
+
+  - id: "wait-for-initial-member-load"
+    action: "wait 3 seconds"
+
+  # Current JDT document symbols render this method as `main(String[])` on all
+  # platforms; the issue's suggested `: void` suffix is not part of the row.
+  - id: "verify-main-member-loaded"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "main(String[])"
+      exact: true
+      inView: "Java Projects"
+    timeout: 20
+
+  # Use the real tree row rather than executeVSCodeCommand.
+  - id: "click-main-member"
+    action: "click main(String[]) tree item exact"
+
+  # Keep the postcondition separate from the target action. Removing
+  # click-main-member therefore makes this negative-control assertion fail.
+  - id: "verify-member-navigation"
+    action: "wait 1 seconds"
+    verify: "App.java is open with the public static void main method visible."
+    verifyEditorTab:
+      title: "App.java"
+    timeout: 20
