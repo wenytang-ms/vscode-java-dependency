@@ -55,6 +55,14 @@ steps:
   - id: "expand-application-package"
     action: "expandTreeItem com.mycompany.app"
 
+  - id: "verify-app-class-visible"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "App"
+      exact: true
+      inView: "Java Projects"
+    timeout: 20
+
   # `expandTreeItem App` can substring-match the already-expanded `my-app`
   # project row, while clicking App executes its open-file command. The package
   # row remains keyboard-focused after its disclosure control is clicked, and
