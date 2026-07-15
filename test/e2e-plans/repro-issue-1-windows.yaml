@@ -1,0 +1,64 @@
+name: "Repro Issue #1 (Windows) — Copy Relative Path should stay relative"
+description: |
+  Reproduces issue #1 on Windows where java.view.package.copyRelativeFilePath
+  incorrectly writes an absolute path. The decisive assertion requires a
+  workspace-relative clipboard value for App.java.
+
+setup:
+  extension: "vscjava.vscode-java-pack"
+  vscodeVersion: "stable"
+  workspace: "../maven"
+  timeout: 180
+  settings:
+    java.configuration.checkProjectSettingsExclusions: false
+    workbench.startupEditor: "none"
+
+steps:
+  - id: "ls-ready"
+    action: "waitForLanguageServer"
+    timeout: 180
+
+  - id: "close-aux-bar"
+    action: "executeVSCodeCommand workbench.action.closeAuxiliaryBar"
+
+  - id: "collapse-outline"
+    action: "collapseSidebarSection OUTLINE"
+
+  - id: "collapse-timeline"
+    action: "collapseSidebarSection TIMELINE"
+
+  - id: "collapse-workspace-root"
+    action: "collapseWorkspaceRoot"
+
+  - id: "focus-java-projects"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+
+  - id: "open-target-file"
+    action: "open file App.java"
+    waitBefore: 2
+
+  - id: "collapse-workspace-root-2"
+    action: "collapseWorkspaceRoot"
+
+  - id: "focus-java-projects-2"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    waitBefore: 1
+
+  - id: "select-app"
+    action: "click App tree item exact"
+    waitBefore: 1
+
+  - id: "seed-clipboard"
+    action: "writeClipboard __SENTINEL_BEFORE_COPY_RELATIVE_PATH__"
+
+  - id: "invoke-copy-relative-path"
+    action: "executeVSCodeCommand java.view.package.copyRelativeFilePath"
+    waitBefore: 1
+
+  - id: "verify-relative-clipboard"
+    action: "wait 1 seconds"
+    verifyClipboard:
+      contains: "App.java"
+      matches: "^src\\\\main\\\\java\\\\com\\\\mycompany\\\\app\\\\App\\.java$"
+      notContains: "__SENTINEL_BEFORE_COPY_RELATIVE_PATH__"
+    timeout: 10
