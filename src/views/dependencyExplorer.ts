@@ -18,7 +18,7 @@ import { getCmdNode } from "../explorerCommands/utility";
 import { Jdtls } from "../java/jdtls";
 import { INodeData } from "../java/nodeData";
 import { Settings } from "../settings";
-import { EventCounter, Utility } from "../utility";
+import { EventCounter, normalizeFileUri, Utility } from "../utility";
 import { DataNode } from "./dataNode";
 import { DependencyDataProvider } from "./dependencyDataProvider";
 import { DragAndDropController } from "./DragAndDropController";
@@ -165,7 +165,7 @@ export class DependencyExplorer implements Disposable {
             instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_COPY_RELATIVE_FILE_PATH, (node?: DataNode) => {
                 const cmdNode = getCmdNode(this._dependencyViewer.selection, node);
                 if (cmdNode?.uri) {
-                    commands.executeCommand("copyRelativeFilePath", Uri.parse(cmdNode.uri));
+                    commands.executeCommand("copyRelativeFilePath", normalizeFileUri(cmdNode.uri));
                 }
             }),
             instrumentOperationAsVsCodeCommand(Commands.VIEW_PACKAGE_RENAME_FILE, (node?: DataNode) => {

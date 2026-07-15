@@ -116,3 +116,35 @@ export function isTest(nodeData: INodeData | undefined): boolean {
 
     return false;
 }
+
+/**
+ * Normalises a file URI string coming from the language server so that
+ * VS Code's workspace-folder lookup works correctly on Windows.
+ *
+ * Eclipse JDT-LS can return URIs with an upper-case drive letter
+ * (e.g. `file:///C:/Users/…`), whereas VS Code registers workspace-folder
+ * URIs with a lower-case drive letter (`file:///c:/Users/…`).  The casing
+ * mismatch causes VS Code's built-in `copyRelativeFilePath` command to fall
+ * back to the absolute path.  Lowercasing the drive letter in the URI path
+ * component makes the lookup succeed.
+ *
+ * On non-Windows platforms (no drive letter) the URI is returned unchanged.
+ *
+ * @param uriString  Raw URI string coming from the language server.
+ * @param platform   Injected OS platform string – defaults to
+ *                   `process.platform`.  Accepting it as a parameter makes
+ *                   the function unit-testable on Linux/macOS for Windows
+ *                   code-paths without requiring a real Windows environment.
+ */
+export function normalizeFileUri(uriString: string, platform: NodeJS.Platform = process.platform): Uri {
+    const uri = Uri.parse(uriString);
+    if (platform === "win32") {
+        const p = uri.path;
+        // A Windows drive letter in a file URI looks like "/C:/" (slash + letter + colon).
+        // Normalise it to lower-case so it matches VS Code's workspace-folder URIs.
+        if (p.length >= 3 && p[0] === "/" && /[A-Z]/.test(p[1]) && p[2] === ":") {
+            return uri.with({ path: "/" + p[1].toLowerCase() + p.slice(2) });
+        }
+    }
+    return uri;
+}
