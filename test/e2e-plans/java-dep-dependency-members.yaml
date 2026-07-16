@@ -1,0 +1,94 @@
+# Test Plan: Java Dependency — Maven Dependency Members
+#
+# Covers expanding a resolved Maven dependency in Java Projects down to a
+# package and a class member. The classpath plan covers unmanaged-folder
+# Referenced Libraries only; this scenario exercises the Maven dependency
+# container and binary-member tree for a managed Java project.
+
+name: "Java Dependency — Maven Dependency Members"
+description: |
+  Expands the Maven Dependencies container in Java Projects, then the JUnit
+  dependency and its junit.framework package, and verifies the TestCase class
+  member is displayed.
+
+setup:
+  extension: "vscjava.vscode-java-pack"
+  vscodeVersion: "stable"
+  workspace: "../maven"
+  timeout: 240
+  settings:
+    java.configuration.checkProjectSettingsExclusions: false
+    workbench.startupEditor: "none"
+
+steps:
+  - id: "ls-ready"
+    action: "waitForLanguageServer"
+    timeout: 180
+
+  # Keep Java Projects tall enough that each expanded dependency row remains
+  # rendered in the virtualized tree.
+  - id: "close-aux-bar"
+    action: "executeVSCodeCommand workbench.action.closeAuxiliaryBar"
+
+  - id: "collapse-outline"
+    action: "collapseSidebarSection OUTLINE"
+
+  - id: "collapse-timeline"
+    action: "collapseSidebarSection TIMELINE"
+
+  - id: "collapse-maven-pane"
+    action: "collapseSidebarSection maven"
+
+  - id: "focus-java-projects"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+
+  - id: "wait-tree-load"
+    action: "wait 3 seconds"
+
+  - id: "expand-project"
+    action: "expandTreeItem my-app"
+
+  - id: "verify-maven-dependencies-container"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "Maven Dependencies"
+      exact: true
+      inView: "Java Projects"
+    timeout: 20
+
+  # This visible expansion produces the first screenshot of the resolved
+  # dependency coordinates before the package member is opened.
+  - id: "expand-maven-dependencies"
+    action: "expandTreeItem Maven Dependencies"
+
+  - id: "verify-junit-dependency"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "junit:junit:4.13.1"
+      exact: true
+      inView: "Java Projects"
+    timeout: 30
+
+  - id: "expand-junit-dependency"
+    action: "expandTreeItem junit:junit:4.13.1"
+
+  - id: "verify-junit-framework-package"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "junit.framework"
+      exact: true
+      inView: "Java Projects"
+    timeout: 30
+
+  - id: "expand-junit-framework-package"
+    action: "expandTreeItem junit.framework"
+
+  # Final screenshot and authoritative assertion: this class can only be
+  # rendered after each dependency/member expansion above succeeds.
+  - id: "verify-testcase-member"
+    action: "wait 1 seconds"
+    verifyTreeItem:
+      name: "TestCase"
+      exact: true
+      inView: "Java Projects"
+    timeout: 30
