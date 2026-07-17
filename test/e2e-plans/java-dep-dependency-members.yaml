@@ -1,0 +1,86 @@
+# Test Plan: Java Dependency — Maven Dependency Members
+#
+# Covers expanding a Maven dependency in the JAVA PROJECTS view with
+# java.dependency.showMembers enabled. The Maven container renders dependencies
+# as groupId:artifactId:version, so JUnit 4.13.2 appears as
+# "junit:junit:4.13.2" rather than its repository filename.
+
+name: "Java Dependency — Maven Dependency Members"
+description: |
+  Verifies that Java Projects exposes packages and classes inside a Maven
+  dependency when java.dependency.showMembers is enabled.
+
+setup:
+  extension: "vscjava.vscode-java-pack"
+  vscodeVersion: "stable"
+  workspace: "../dependency-members"
+  timeout: 240
+  settings:
+    java.configuration.checkProjectSettingsExclusions: false
+    java.dependency.showMembers: true
+    java.dependency.packagePresentation: "flat"
+    workbench.startupEditor: "none"
+
+steps:
+  - id: "language-server-ready"
+    action: "waitForLanguageServer"
+    timeout: 180
+
+  - id: "close-auxiliary-bar"
+    action: "executeVSCodeCommand workbench.action.closeAuxiliaryBar"
+
+  - id: "collapse-outline"
+    action: "collapseSidebarSection OUTLINE"
+
+  - id: "collapse-timeline"
+    action: "collapseSidebarSection TIMELINE"
+
+  - id: "collapse-workspace-folder"
+    action: "collapseWorkspaceRoot"
+
+  - id: "focus-java-projects"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    verifyTreeItem:
+      name: "dependency-members"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "build-maven-project"
+    action: 'clickViewTitleAction "Java Projects" "Build All"'
+
+  - id: "wait-for-maven-build"
+    action: "waitForLanguageServer"
+    timeout: 120
+
+  - id: "expand-project"
+    action: "expandTreeItem dependency-members"
+    verifyTreeItem:
+      name: "Maven Dependencies"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-maven-dependencies"
+    action: "expandTreeItem Maven Dependencies"
+    verifyTreeItem:
+      name: "junit:junit:4.13.2"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-junit-dependency"
+    action: "expandTreeItem junit:junit:4.13.2"
+    verifyTreeItem:
+      name: "org.junit"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-org-junit-package"
+    action: "expandTreeItem org.junit"
+    verifyTreeItem:
+      name: "Assert"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
