@@ -46,21 +46,17 @@ steps:
       inView: "Java Projects"
     timeout: 60
 
+  - id: "build-maven-project"
+    action: 'clickViewTitleAction "Java Projects" "Build All"'
+
+  - id: "wait-for-maven-build"
+    action: "waitForLanguageServer"
+    timeout: 120
+
   - id: "expand-project"
     action: "expandTreeItem dependency-members"
     verifyTreeItem:
       name: "Maven Dependencies"
-      exact: true
-      inView: "Java Projects"
-    timeout: 60
-
-  # The source package appears only after Maven import has completed. Waiting
-  # for it prevents the binary package-root query from being cached empty while
-  # JDT.LS is still building the project.
-  - id: "wait-for-maven-import"
-    action: "expandTreeItem src/main/java"
-    verifyTreeItem:
-      name: "com.microsoft.java"
       exact: true
       inView: "Java Projects"
     timeout: 60
