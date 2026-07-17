@@ -1,0 +1,90 @@
+# Test Plan: Java Dependency — Maven Dependency Members
+#
+# Verifies that Java Projects can traverse a Maven-resolved archive when member
+# display is enabled. This is intentionally separate from java-dep-classpath:
+# that plan exercises library-management commands on an unmanaged project,
+# whereas this plan covers the Maven dependency tree and archive contents.
+
+name: "Java Dependency — Maven Dependency Members"
+description: |
+  Opens a minimal Maven project with junit:junit:4.13.2, enables Java member
+  display, and verifies that expanding the resolved Maven JUnit dependency
+  exposes the org.junit package and Assert class in Java Projects.
+
+setup:
+  extension: "vscjava.vscode-java-pack"
+  vscodeVersion: "stable"
+  workspace: "../maven-dependency-members"
+  timeout: 240
+  settings:
+    java.configuration.checkProjectSettingsExclusions: false
+    java.dependency.showMembers: true
+    workbench.startupEditor: "none"
+
+steps:
+  - id: "wait-for-maven-import"
+    action: "waitForLanguageServer"
+    timeout: 180
+
+  - id: "close-auxiliary-bar"
+    action: "executeVSCodeCommand workbench.action.closeAuxiliaryBar"
+
+  - id: "collapse-outline"
+    action: "collapseSidebarSection OUTLINE"
+
+  - id: "collapse-timeline"
+    action: "collapseSidebarSection TIMELINE"
+
+  - id: "collapse-workspace-folder"
+    action: "collapseSidebarSection maven-dependency-members"
+
+  - id: "focus-java-projects"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    verifyTreeItem:
+      name: "dependency-members"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-maven-project"
+    action: "expandTreeItem dependency-members"
+    verifyTreeItem:
+      name: "Maven Dependencies"
+      exact: true
+      inView: "Java Projects"
+    timeout: 30
+
+  - id: "expand-maven-dependencies"
+    action: "expandTreeItem Maven Dependencies"
+    verifyTreeItem:
+      name: "junit:junit:4.13.2"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-junit-dependency"
+    action: "expandTreeItem junit:junit:4.13.2"
+    verifyTreeItem:
+      name: "org.junit"
+      exact: true
+      inView: "Java Projects"
+    timeout: 30
+
+  - id: "expand-org-junit-package"
+    action: "expandTreeItem org.junit"
+    verifyTreeItem:
+      name: "Assert"
+      exact: true
+      inView: "Java Projects"
+    timeout: 30
+
+  # Assert is a PrimaryTypeNode. Its members are only available when
+  # java.dependency.showMembers is enabled, so this final expansion proves the
+  # fixture setting affects the dependency-tree behavior rather than merely
+  # showing the archive's package and class nodes.
+  - id: "expand-assert-class"
+    action: "expandTreeItem Assert"
+    verifyTreeItem:
+      name: "assertEquals"
+      inView: "Java Projects"
+    timeout: 30
