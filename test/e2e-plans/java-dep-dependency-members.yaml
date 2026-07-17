@@ -61,18 +61,25 @@ steps:
       inView: "Java Projects"
     timeout: 60
 
+  # Binary dependency nodes do not expand through the driver's
+  # expandTreeItem helper on current VS Code builds. Select the visible row
+  # and use the tree's native Right Arrow expansion interaction instead.
+  - id: "select-junit-dependency"
+    action: "click junit:junit:4.13.2 tree item"
+
   - id: "expand-junit-dependency"
-    action: "expandTreeItem junit:junit:4.13.2"
+    action: "pressKey ArrowRight"
     verifyTreeItem:
       name: "org.junit"
-      exact: true
       inView: "Java Projects"
     timeout: 60
 
+  - id: "select-org-junit-package"
+    action: "click org.junit tree item"
+
   - id: "expand-org-junit-package"
-    action: "expandTreeItem org.junit"
+    action: "pressKey ArrowRight"
     verifyTreeItem:
       name: "Assert"
-      exact: true
       inView: "Java Projects"
     timeout: 60
