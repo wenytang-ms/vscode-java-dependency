@@ -1,3 +1,4 @@
 {
-  "java.dependency.showMembers": true
+  "java.dependency.showMembers": true,
+  "java.dependency.packagePresentation": "flat"
 }

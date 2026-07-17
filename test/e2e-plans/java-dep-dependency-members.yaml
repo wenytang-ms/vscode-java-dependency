@@ -18,6 +18,7 @@ setup:
   settings:
     java.configuration.checkProjectSettingsExclusions: false
     java.dependency.showMembers: true
+    java.dependency.packagePresentation: "flat"
     workbench.startupEditor: "none"
 
 steps:
@@ -53,6 +54,17 @@ steps:
       inView: "Java Projects"
     timeout: 60
 
+  # The source package appears only after Maven import has completed. Waiting
+  # for it prevents the binary package-root query from being cached empty while
+  # JDT.LS is still building the project.
+  - id: "wait-for-maven-import"
+    action: "expandTreeItem src/main/java"
+    verifyTreeItem:
+      name: "com.microsoft.java"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
   - id: "expand-maven-dependencies"
     action: "expandTreeItem Maven Dependencies"
     verifyTreeItem:
@@ -61,25 +73,18 @@ steps:
       inView: "Java Projects"
     timeout: 60
 
-  # Binary dependency nodes do not expand through the driver's
-  # expandTreeItem helper on current VS Code builds. Select the visible row
-  # and use the tree's native Right Arrow expansion interaction instead.
-  - id: "select-junit-dependency"
-    action: "click junit:junit:4.13.2 tree item"
-
   - id: "expand-junit-dependency"
-    action: "pressKey ArrowRight"
+    action: "expandTreeItem junit:junit:4.13.2"
     verifyTreeItem:
       name: "org.junit"
+      exact: true
       inView: "Java Projects"
     timeout: 60
 
-  - id: "select-org-junit-package"
-    action: "click org.junit tree item"
-
   - id: "expand-org-junit-package"
-    action: "pressKey ArrowRight"
+    action: "expandTreeItem org.junit"
     verifyTreeItem:
       name: "Assert"
+      exact: true
       inView: "Java Projects"
     timeout: 60
