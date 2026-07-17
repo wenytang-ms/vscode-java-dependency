@@ -8,8 +8,8 @@
 name: "Java Dependency — Maven Dependency Members"
 description: |
   Opens a minimal Maven project with junit:junit:4.13.2, enables Java member
-  display, and verifies that expanding the resolved JUnit archive exposes the
-  org.junit package and Assert class in Java Projects.
+  display, and verifies that expanding the resolved Maven JUnit dependency
+  exposes the org.junit package and Assert class in Java Projects.
 
 setup:
   extension: "vscjava.vscode-java-pack"
@@ -49,20 +49,21 @@ steps:
   - id: "expand-maven-project"
     action: "expandTreeItem dependency-members"
     verifyTreeItem:
-      name: "Referenced Libraries"
+      name: "Maven Dependencies"
       exact: true
       inView: "Java Projects"
     timeout: 30
 
-  - id: "expand-referenced-libraries"
-    action: "expandTreeItem Referenced Libraries"
+  - id: "expand-maven-dependencies"
+    action: "expandTreeItem Maven Dependencies"
     verifyTreeItem:
-      name: "junit-4.13.2.jar"
+      name: "junit:junit:4.13.2"
+      exact: true
       inView: "Java Projects"
     timeout: 60
 
-  - id: "expand-junit-archive"
-    action: "expandTreeItem junit-4.13.2.jar"
+  - id: "expand-junit-dependency"
+    action: "expandTreeItem junit:junit:4.13.2"
     verifyTreeItem:
       name: "org.junit"
       exact: true
