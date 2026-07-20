@@ -274,7 +274,7 @@ suite("Maven Project View Tests", () => {
         const mavenChildren = await mavenDependency.getChildren();
 
         assert.equal(mavenChildren[0].getDisplayName(), "org.hamcrest:hamcrest-core:1.3");
-        assert.equal(mavenChildren[1].getDisplayName(), "junit:junit:4.13.1");
+        assert.equal(mavenChildren[1].getDisplayName(), "junit:junit:4.13.2");
     });
 
     teardown(async () => {
