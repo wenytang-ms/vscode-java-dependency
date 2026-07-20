@@ -1,0 +1,87 @@
+# Test Plan: Java Dependency — Maven Dependency Members
+#
+# Covers the Java Projects dependency tree for a Maven-managed JAR. The
+# Maven fixture declares junit:junit:4.13.2; JDT.LS renders Maven dependencies
+# under "Maven Dependencies" (rather than the unmanaged-project
+# "Referenced Libraries" container).
+
+name: "Java Dependency — Maven Dependency Members"
+description: |
+  Opens the Maven fixture in Java Projects, expands its JUnit dependency, and
+  verifies that org.junit, Assert, and an Assert member are visible when
+  java.dependency.showMembers is enabled.
+
+setup:
+  extension: "vscjava.vscode-java-pack"
+  vscodeVersion: "stable"
+  workspace: "../maven"
+  timeout: 240
+  settings:
+    java.configuration.checkProjectSettingsExclusions: false
+    workbench.startupEditor: "none"
+    java.dependency.showMembers: true
+
+steps:
+  - id: "language-server-ready"
+    action: "waitForLanguageServer"
+    timeout: 180
+
+  # Leave enough room for dependency rows in the virtualized Java Projects tree.
+  - id: "close-auxiliary-bar"
+    action: "executeVSCodeCommand workbench.action.closeAuxiliaryBar"
+
+  - id: "collapse-maven-explorer"
+    action: "collapseSidebarSection maven"
+
+  - id: "focus-java-projects"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+
+  - id: "focus-and-verify-maven-project"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    verifyTreeItem:
+      name: "my-app"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-maven-project"
+    action: "expandTreeItem my-app"
+    verifyTreeItem:
+      name: "Maven Dependencies"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-maven-dependencies"
+    action: "expandTreeItem Maven Dependencies"
+    verifyTreeItem:
+      name: "junit:junit:4.13.2"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-junit-dependency"
+    action: "expandTreeItem junit:junit:4.13.2"
+    verifyTreeItem:
+      name: "org.junit"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-org-junit-package"
+    action: "expandTreeItem org.junit"
+    verifyTreeItem:
+      name: "Assert"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  # Assert is collapsible only when java.dependency.showMembers is enabled.
+  # This proves the configured dependency-member behavior rather than merely
+  # proving that the JAR can be expanded.
+  - id: "expand-assert-class"
+    action: "expandTreeItem Assert"
+    verifyTreeItem:
+      name: "assertTrue"
+      inView: "Java Projects"
+    timeout: 60
