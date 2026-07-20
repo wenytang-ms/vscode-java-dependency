@@ -1,0 +1,93 @@
+# Test Plan: Java Dependency — Maven Dependency Members
+#
+# Maven projects render resolved artifacts beneath "Maven Dependencies"; the
+# separate "Referenced Libraries" container is reserved for unmanaged folders.
+# This plan verifies the equivalent Maven dependency path through JUnit's jar.
+
+name: "Java Dependency — Maven Dependency Members"
+description: |
+  Opens the Maven fixture with Java dependency members enabled, expands the
+  resolved JUnit dependency, and verifies that org.junit and Assert are visible
+  in the Java Projects view.
+
+setup:
+  extension: "vscjava.vscode-java-pack"
+  vscodeVersion: "stable"
+  workspace: "../maven-dependency-members"
+  timeout: 240
+  settings:
+    java.configuration.checkProjectSettingsExclusions: false
+    java.dependency.showMembers: true
+    workbench.startupEditor: "none"
+
+steps:
+  - id: "language-server-ready"
+    action: "waitForLanguageServer"
+    timeout: 180
+
+  - id: "close-auxiliary-bar"
+    action: "executeVSCodeCommand workbench.action.closeAuxiliaryBar"
+
+  - id: "collapse-outline"
+    action: "collapseSidebarSection OUTLINE"
+
+  - id: "collapse-timeline"
+    action: "collapseSidebarSection TIMELINE"
+
+  - id: "collapse-maven-explorer"
+    action: "collapseSidebarSection maven"
+
+  - id: "focus-java-projects"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+
+  - id: "verify-maven-project-imported"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    verifyTreeItem:
+      name: "dependency-members"
+      exact: true
+      inView: "Java Projects"
+    timeout: 180
+
+  - id: "expand-maven-project"
+    action: "expandTreeItem dependency-members"
+
+  - id: "verify-maven-dependencies-container"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    verifyTreeItem:
+      name: "Maven Dependencies"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-maven-dependencies"
+    action: "expandTreeItem Maven Dependencies"
+
+  - id: "verify-junit-jar"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    verifyTreeItem:
+      name: "junit:junit:4.13.2"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-junit-jar"
+    action: "expandTreeItem junit:junit:4.13.2"
+
+  - id: "verify-junit-package"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    verifyTreeItem:
+      name: "org.junit"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
+
+  - id: "expand-junit-package"
+    action: "expandTreeItem org.junit"
+
+  - id: "verify-assert-class"
+    action: "executeVSCodeCommand javaProjectExplorer.focus"
+    verifyTreeItem:
+      name: "Assert"
+      exact: true
+      inView: "Java Projects"
+    timeout: 60
